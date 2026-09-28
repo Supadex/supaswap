@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, [data-theme="dark"], .dark *));
+
+@layer base {
+  :root,
+  html.dark,
+  [data-theme="dark"],
+  body.dark {
+    --bg-base: #08090b;
+    --bg-surface: #111317;
+    --bg-elevated: #181a20;
+    --bg-subtle: rgba(255, 255, 255, 0.04);
+    --border-hairline: rgba(255, 255, 255, 0.08);
+    --border-active: rgba(255, 255, 255, 0.22);
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --text-tertiary: #6b7280;
+    --accent-primary: #ffffff;
+    --accent-primary-text: #000000;
+    --accent-secondary: #27272a;
+    --accent-subtle: rgba(255, 255, 255, 0.08);
+    --brand-accent: #22c55e;
+    --brand-accent-glow: rgba(34, 197, 94, 0.25);
+    --brand-purple: #a855f7;
+    --color-success: #22c55e;
+    --color-warning: #fbbf24;
+    --color-danger: #f87171;
+    --slider-track: #27272a;
+    --radius-xs: 6px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 18px;
+    --radius-xl: 22px;
+    --radius-2xl: 28px;
+    --radius-full: 9999px;
+  }
+
+  :root.light,
+  html.light,
+  [data-theme="light"],
+  body.light {
+    --bg-base: #f8f9fa;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f1f3f5;
+    --bg-subtle: rgba(0, 0, 0, 0.03);
+    --border-hairline: rgba(0, 0, 0, 0.09);
+    --border-active: rgba(0, 0, 0, 0.25);
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-tertiary: #94a3b8;
+    --accent-primary: #000000;
+    --accent-primary-text: #ffffff;
+    --accent-secondary: #e2e8f0;
+    --accent-subtle: rgba(0, 0, 0, 0.05);
+    --brand-accent: #16a34a;
+    --brand-accent-glow: rgba(22, 163, 74, 0.20);
+    --brand-purple: #7e22ce;
+    --color-success: #16a34a;
+    --color-warning: #d97706;
+    --color-danger: #dc2626;
+    --slider-track: #e2e8f0;
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", sans-serif;
+    letter-spacing: -0.015em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100vh;
+    overflow-x: hidden;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  code, kbd, samp, pre {
+    font-family: "SF Mono", "JetBrains Mono", "Fira Code", monospace;
+  }
+}
+
+/* Custom Semantic Theme Helper Classes */
+.bg-base-theme {
+  background-color: var(--bg-base);
+}
+.bg-surface-theme {
+  background-color: var(--bg-surface);
+}
+.bg-elevated-theme {
+  background-color: var(--bg-elevated);
+}
+.bg-subtle-theme {
+  background-color: var(--bg-subtle);
+}
+.border-hairline-theme {
+  border-color: var(--border-hairline);
+}
+.border-active-theme {
+  border-color: var(--border-active);
+}
+.text-primary-theme {
+  color: var(--text-primary);
+}
+.text-secondary-theme {
+  color: var(--text-secondary);
+}
+.text-tertiary-theme {
+  color: var(--text-tertiary);
+}
+
+/* Apple-style Custom Smooth Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.45);
+}
+
+/* Micro-interaction Animation Utilities */
+.apple-ease {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.apple-spring-press {
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.apple-spring-press:active {
+  transform: scale(0.97);
+}
