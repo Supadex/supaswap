@@ -1,5 +1,5 @@
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { mainnet, sepolia, arbitrum, base, localhost } from '@reown/appkit/networks';
+import { mainnet, sepolia, arbitrum, base, anvil } from '@reown/appkit/networks';
 import type { AppKitNetwork } from '@reown/appkit/networks';
 import { cookieStorage, createStorage, http } from 'wagmi';
 
@@ -8,7 +8,7 @@ export const projectId =
   (import.meta.env.VITE_REOWN_PROJECT_ID as string) || 'b56e18d47c72ab683b10814fe9495694';
 
 export const metadata = {
-  name: 'SupaDex V4',
+  name: 'SupaDex',
   description: 'Multi-Curve AMM with Dynamic LVR Spread Defense & ERC-6909 Vault Claims',
   url: typeof window !== 'undefined' ? window.location.origin : 'https://supadex.fi',
   icons: ['https://supadex.fi/favicon.ico'],
@@ -20,7 +20,7 @@ export const networks: [AppKitNetwork, ...AppKitNetwork[]] = [
   mainnet,
   arbitrum,
   base,
-  localhost,
+  anvil,
 ];
 
 // Set up Wagmi Adapter
@@ -36,7 +36,7 @@ export const wagmiAdapter = new WagmiAdapter({
     [mainnet.id]: http(),
     [arbitrum.id]: http(),
     [base.id]: http(),
-    [localhost.id]: http('http://127.0.0.1:8545'),
+    [anvil.id]: http('http://127.0.0.1:8545'),
   },
 });
 

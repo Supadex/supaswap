@@ -47,6 +47,15 @@ export interface QuoteResult {
   priceImpactBps: number;
   dynamicLvrSpreadBps: number;
   recommendedCurve: CurveType;
+  /** True when amountOut was estimated client-side (not from SupaQuoter). */
+  isSimulated?: boolean;
+  /** Multi-hop PathKeyLib bytes (when set, use exactInput instead of exactInputSingle). */
+  path?: `0x${string}`;
+  /** Display path e.g. DAI → ETH → USDC · CLAMM/StableAMM */
+  routeLabel?: string;
+  hopCount?: number;
+  /** Per-hop curve + fee labels */
+  hopCurveLabels?: string[];
 }
 
 export interface TokenMetadata {
@@ -56,6 +65,10 @@ export interface TokenMetadata {
   decimals: number;
   logoURI?: string;
   priceUSD: number;
+  /** 24h USD price change % (CoinGecko). */
+  priceChange24h?: number;
+  /** 24h trading volume USD (CoinGecko / global market). */
+  volume24hUSD?: number;
   isNative?: boolean;
   isClaim?: boolean;
 }

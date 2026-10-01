@@ -3,10 +3,17 @@ import { useAccount, useDisconnect } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useTheme } from '../../context/useTheme';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
 import { Sun, Moon, Globe, ChevronDown, Wallet, LogOut } from 'lucide-react';
 
-export type NavPage = 'swap' | 'pools' | 'new_position' | 'positions' | 'claims' | 'explore';
+export type NavPage =
+  | 'swap'
+  | 'pools'
+  | 'new_position'
+  | 'positions'
+  | 'position_detail'
+  | 'pool_detail'
+  | 'claims'
+  | 'explore';
 
 export interface NavbarProps {
   activePage: NavPage;
@@ -52,9 +59,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="font-semibold text-lg tracking-tight text-neutral-900 dark:text-white">
                 SupaDex
               </span>
-              <Badge variant="outline" size="sm" className="font-mono text-[10px] uppercase">
-                V4
-              </Badge>
             </div>
           </button>
 

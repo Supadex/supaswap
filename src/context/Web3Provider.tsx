@@ -22,7 +22,7 @@ createAppKit({
   networks,
   projectId,
   metadata: {
-    name: 'SupaDex V4',
+    name: 'SupaDex',
     description: 'Multi-Curve AMM with Dynamic LVR Spread Defense & ERC-6909 Vault Claims',
     url: typeof window !== 'undefined' ? window.location.origin : 'https://supadex.fi',
     icons: ['https://supadex.fi/favicon.ico'],

@@ -1,6 +1,9 @@
-import { useState, useMemo } from 'react';
-import { useAccount } from 'wagmi';
-import type { TokenMetadata, CurveType } from '../contracts/types';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
+import { useConnection, usePublicClient } from 'wagmi';
+import type { CurveType, TokenMetadata } from '../contracts/types';
+import { getAddressesForChain } from '../contracts/addresses';
+import { fetchOnchainPools } from '../services/onchainIndex';
+import { useTokenList } from './useTokenList';
 
 export interface PoolItem {
   id: string;
@@ -11,54 +14,87 @@ export interface PoolItem {
   curveType: CurveType;
   feeTier: string;
   feeNumber: number;
+  tickSpacing?: number;
+  plugin?: string;
+  poolId?: string;
   tvlUSD: number;
   volume24hUSD: number;
+  /** 24h volume / TVL (Uniswap-style ratio). */
+  volTvl: number;
   apr: string;
   lvrProtection: string;
+  activeLiquidity?: bigint;
 }
 
-const STORAGE_POOLS_KEY = 'supadex_initialized_pools';
-
+/**
+ * On-chain pool registry — Initialize events are the single source of truth.
+ * No localStorage.
+ */
 export function usePools() {
-  const { chainId } = useAccount();
+  const { chainId } = useConnection();
+  const publicClient = usePublicClient();
+  const addresses = getAddressesForChain(chainId);
+  const { tokens, isLoadingList } = useTokenList();
 
-  const [storedPools, setStoredPools] = useState<Record<number, PoolItem[]>>({});
+  const knownTokens = useMemo(
+    () => tokens.filter((t) => !t.isClaim),
+    [tokens]
+  );
 
-  const currentChainId = chainId || 11155111;
+  const [pools, setPools] = useState<PoolItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const pools: PoolItem[] = useMemo(() => {
-    if (storedPools[currentChainId]) {
-      return storedPools[currentChainId];
+  const refreshPools = useCallback(async () => {
+    if (!publicClient || !addresses.poolManager) {
+      setPools([]);
+      setIsLoading(false);
+      return;
     }
+    if (isLoadingList && knownTokens.length < 3) {
+      setIsLoading(true);
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
     try {
-      const saved = localStorage.getItem(`${STORAGE_POOLS_KEY}_${currentChainId}`);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+      const next = await fetchOnchainPools({
+        publicClient,
+        poolManager: addresses.poolManager,
+        knownTokens,
+      });
+      setPools(next);
+    } catch (err) {
+      console.warn('refreshPools failed', err);
+      setError(err instanceof Error ? err.message : 'Failed to load pools');
+      setPools([]);
+    } finally {
+      setIsLoading(false);
     }
-  }, [currentChainId, storedPools]);
+  }, [publicClient, addresses.poolManager, knownTokens, isLoadingList]);
 
-  const addPool = (newPool: PoolItem) => {
-    const updated = [newPool, ...pools];
-    setStoredPools((prev) => ({
-      ...prev,
-      [currentChainId]: updated,
-    }));
-    try {
-      localStorage.setItem(`${STORAGE_POOLS_KEY}_${currentChainId}`, JSON.stringify(updated));
-    } catch (e) {
-      console.error('Failed to save pool to storage', e);
+  useLayoutEffect(() => {
+    if (publicClient && addresses.poolManager) {
+      setIsLoading(true);
     }
-  };
+  }, [publicClient, addresses.poolManager]);
 
-  // Aggregate stats from actual pools
+  useEffect(() => {
+    void refreshPools();
+  }, [refreshPools]);
+
   const totalTVL = pools.reduce((acc, p) => acc + (p.tvlUSD || 0), 0);
   const totalVolume24h = pools.reduce((acc, p) => acc + (p.volume24hUSD || 0), 0);
-  const totalFees24h = pools.reduce((acc, p) => acc + (p.volume24hUSD * (p.feeNumber / 1000000) || 0), 0);
+  const totalFees24h = pools.reduce(
+    (acc, p) => acc + (p.volume24hUSD * (p.feeNumber / 1_000_000) || 0),
+    0
+  );
 
   return {
     pools,
-    addPool,
+    refreshPools,
+    isLoading,
+    error,
     totalTVL,
     totalVolume24h,
     totalFees24h,

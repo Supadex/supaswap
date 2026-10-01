@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { TokenAmountInput } from '../ui/TokenAmountInput';
 import { Badge } from '../ui/Badge';
+import { TokenLogo } from '../ui/TokenLogo';
 import { useToast } from '../ui/Toast';
 import { useSupaVault } from '../../hooks/useSupaVault';
 import { parseUnits } from 'viem';
@@ -20,6 +21,7 @@ interface WithdrawClaimModalProps {
     walletBalance: string;
     claimBalance: string;
     priceUSD: number;
+    logoURI?: string;
   } | null;
   onSuccess?: () => void;
 }
@@ -92,9 +94,12 @@ export const WithdrawClaimModal: React.FC<WithdrawClaimModalProps> = ({
         {/* Token Info Header */}
         <div className="flex items-center justify-between p-3.5 rounded-xl bg-neutral-100 dark:bg-white/[0.04] border border-neutral-200/80 dark:border-white/[0.06]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-white/10 flex items-center justify-center font-bold text-xs text-neutral-800 dark:text-white border border-neutral-300 dark:border-white/10">
-              {token.symbol.slice(0, 3)}
-            </div>
+            <TokenLogo
+              symbol={token.symbol}
+              address={token.address}
+              logoURI={token.logoURI}
+              size="md"
+            />
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-neutral-900 dark:text-white text-sm">

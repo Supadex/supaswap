@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAccount } from 'wagmi';
+import { parseUnits } from 'viem';
 import { useAppKit } from '@reown/appkit/react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
@@ -142,21 +143,26 @@ export const AddLiquidityModal: React.FC<AddLiquidityModalProps> = ({
     }
 
     try {
-      // 1. Check Allowance for Token0
-      if (!token0.isNative) {
-        setStep('approving0');
-        const allowance0 = await checkAllowance(token0.address, address);
-        if (allowance0 === BigInt(0)) {
-          await approveToken(token0.address);
-        }
-      }
+      const payWithClaims =
+        activeLedgerTab === 'erc6909' ||
+        Boolean(token0.isClaim) ||
+        Boolean(token1.isClaim);
 
-      // 2. Check Allowance for Token1
-      if (!token1.isNative) {
-        setStep('approving1');
-        const allowance1 = await checkAllowance(token1.address, address);
-        if (allowance1 === BigInt(0)) {
-          await approveToken(token1.address);
+      if (!payWithClaims) {
+        if (!token0.isNative) {
+          setStep('approving0');
+          const allowance0 = await checkAllowance(token0.address, address);
+          if (allowance0 === BigInt(0)) {
+            await approveToken(token0.address);
+          }
+        }
+
+        if (!token1.isNative) {
+          setStep('approving1');
+          const allowance1 = await checkAllowance(token1.address, address);
+          if (allowance1 === BigInt(0)) {
+            await approveToken(token1.address);
+          }
         }
       }
 
@@ -171,10 +177,15 @@ export const AddLiquidityModal: React.FC<AddLiquidityModalProps> = ({
         hooks: '0x0000000000000000000000000000000000000000',
         tickLower,
         tickUpper,
+        liquidity: (() => {
+          const liq = parseUnits(amount0 || '0', token0.decimals);
+          return liq > 0n ? liq : 1n;
+        })(),
         amount0Desired: amount0,
         amount1Desired: amount1,
         amount0Decimals: token0.decimals,
         amount1Decimals: token1.decimals,
+        payWithClaims,
       });
 
       setMintedTxHash(hash);

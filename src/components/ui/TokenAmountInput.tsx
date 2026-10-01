@@ -17,6 +17,8 @@ export interface TokenAmountInputProps {
   readOnly?: boolean;
   className?: string;
   isVaultClaim?: boolean;
+  /** When set, shows a Wallet / Vault Claims ledger toggle on the input */
+  onToggleVaultClaim?: () => void;
 }
 
 export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
@@ -34,6 +36,7 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
   readOnly = false,
   className,
   isVaultClaim = false,
+  onToggleVaultClaim,
 }) => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/,/g, '.');
@@ -47,16 +50,57 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
     <div
       className={cn(
         'w-full bg-neutral-100 dark:bg-[#181A20] rounded-2xl p-4 border border-neutral-200 dark:border-white/[0.08] transition-all duration-150 focus-within:border-neutral-400 dark:focus-within:border-white/20',
+        isVaultClaim && 'border-neutral-300 dark:border-white/[0.14]',
         className
       )}
     >
-      <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-2">
-        <span className="font-medium">{label || 'You pay'}</span>
+      <div className="flex items-center justify-between text-xs text-neutral-500 dark:text-neutral-400 mb-2 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="font-medium shrink-0">{label || 'You pay'}</span>
+          {onToggleVaultClaim && (
+            <div
+              className="flex items-center p-0.5 rounded-lg bg-neutral-200/80 dark:bg-black/30 border border-neutral-300/60 dark:border-white/[0.08]"
+              role="group"
+              aria-label="Payment ledger"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (isVaultClaim) onToggleVaultClaim();
+                }}
+                disabled={disabled}
+                className={cn(
+                  'px-2 py-0.5 text-[10px] font-medium rounded-md transition-all cursor-pointer',
+                  !isVaultClaim
+                    ? 'bg-white dark:bg-white/[0.12] text-neutral-900 dark:text-white shadow-sm'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                )}
+              >
+                Wallet
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isVaultClaim) onToggleVaultClaim();
+                }}
+                disabled={disabled}
+                className={cn(
+                  'px-2 py-0.5 text-[10px] font-medium rounded-md transition-all cursor-pointer',
+                  isVaultClaim
+                    ? 'bg-white dark:bg-white/[0.12] text-neutral-900 dark:text-white shadow-sm'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'
+                )}
+              >
+                Claims
+              </button>
+            </div>
+          )}
+        </div>
         {balance && (
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 shrink-0">
             <span>Balance: {balance}</span>
-            {isVaultClaim && (
-              <span className="text-[10px] px-1.5 py-0.2 bg-purple-500/15 text-purple-600 dark:text-purple-400 rounded-md font-mono">
+            {isVaultClaim && !onToggleVaultClaim && (
+              <span className="text-[10px] px-1.5 py-0.2 bg-neutral-200 dark:bg-white/[0.08] text-neutral-600 dark:text-neutral-300 rounded-md font-mono">
                 ERC-6909
               </span>
             )}
@@ -116,6 +160,11 @@ export const TokenAmountInput: React.FC<TokenAmountInputProps> = ({
             </span>
           )}
           <span className="font-semibold">{tokenSymbol}</span>
+          {isVaultClaim && (
+            <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-neutral-100 dark:bg-white/[0.06] text-neutral-500 dark:text-neutral-400 border border-neutral-200/80 dark:border-white/[0.08]">
+              6909
+            </span>
+          )}
           {onSelectToken && <ChevronDown className="w-4 h-4 text-neutral-400 shrink-0" />}
         </button>
       </div>

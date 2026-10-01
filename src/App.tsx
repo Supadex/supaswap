@@ -1,25 +1,33 @@
 import React, { useState, Suspense, lazy } from 'react';
+import type { Hex } from 'viem';
 import { ThemeProvider } from './context/ThemeContext';
 import { Web3Provider } from './context/Web3Provider';
 import { ToastProvider } from './components/ui/Toast';
 import { Navbar, type NavPage } from './components/layout/Navbar';
 import { Skeleton } from './components/ui/Skeleton';
 import type { TokenMetadata, CurveType } from './contracts/types';
-import { DEFAULT_TOKENS } from './contracts/addresses';
 
 // Dynamic route lazy loading for optimal bundle splitting
 const SwapPage = lazy(() => import('./pages/SwapPage').then(m => ({ default: m.SwapPage })));
 const PoolsPage = lazy(() => import('./pages/PoolsPage').then(m => ({ default: m.PoolsPage })));
 const NewPositionPage = lazy(() => import('./pages/NewPositionPage').then(m => ({ default: m.NewPositionPage })));
 const PositionsPage = lazy(() => import('./pages/PositionsPage').then(m => ({ default: m.PositionsPage })));
+const PositionDetailPage = lazy(() =>
+  import('./pages/PositionDetailPage').then((m) => ({ default: m.PositionDetailPage }))
+);
+const PoolDetailPage = lazy(() =>
+  import('./pages/PoolDetailPage').then((m) => ({ default: m.PoolDetailPage }))
+);
 const VaultClaimsPage = lazy(() => import('./pages/VaultClaimsPage').then(m => ({ default: m.VaultClaimsPage })));
 const ExplorePage = lazy(() => import('./pages/ExplorePage').then(m => ({ default: m.ExplorePage })));
 
 interface NewPositionInitState {
-  token0: TokenMetadata;
-  token1: TokenMetadata;
+  token0?: TokenMetadata;
+  token1?: TokenMetadata;
   curveType?: CurveType;
   feeTier?: number;
+  plugin?: `0x${string}`;
+  tickSpacing?: number;
 }
 
 const PageFallback: React.FC = () => (
@@ -39,40 +47,66 @@ const PageFallback: React.FC = () => (
 
 const AppContent: React.FC = () => {
   const [activePage, setActivePage] = useState<NavPage>('swap');
-  const [newPositionParams, setNewPositionParams] = useState<NewPositionInitState>({
-    token0: DEFAULT_TOKENS[0],
-    token1: DEFAULT_TOKENS[1],
-  });
+  const [newPositionParams, setNewPositionParams] = useState<NewPositionInitState>({});
+  const [detailTokenId, setDetailTokenId] = useState<bigint | null>(null);
+  const [detailPoolId, setDetailPoolId] = useState<Hex | null>(null);
 
   const handleNavigateNewPosition = (
     token0?: TokenMetadata,
     token1?: TokenMetadata,
     curveType?: CurveType,
-    feeTier?: number
+    feeTier?: number,
+    plugin?: `0x${string}`,
+    tickSpacing?: number
   ) => {
     setNewPositionParams({
-      token0: token0 ?? DEFAULT_TOKENS[0],
-      token1: token1 ?? DEFAULT_TOKENS[1],
+      token0,
+      token1,
       curveType,
       feeTier,
+      plugin,
+      tickSpacing,
     });
     setActivePage('new_position');
   };
 
+  const handleNavigatePositionDetail = (tokenId: bigint) => {
+    setDetailTokenId(tokenId);
+    setDetailPoolId(null);
+    setActivePage('position_detail');
+  };
+
+  const handleNavigatePoolDetail = (poolId: string) => {
+    setDetailPoolId(poolId as Hex);
+    setDetailTokenId(null);
+    setActivePage('pool_detail');
+  };
+
+  const handlePageChange = (page: NavPage) => {
+    if (page !== 'position_detail') setDetailTokenId(null);
+    if (page !== 'pool_detail') setDetailPoolId(null);
+    setActivePage(page);
+  };
+
+  const navbarPage: NavPage =
+    activePage === 'position_detail'
+      ? 'positions'
+      : activePage === 'pool_detail' || activePage === 'new_position'
+        ? 'pools'
+        : activePage;
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FA] dark:bg-[#08090B] text-neutral-900 dark:text-white transition-colors duration-200 selection:bg-emerald-500/20 selection:text-emerald-500">
-      {/* Top Sticky Header */}
-      <Navbar
-        activePage={activePage}
-        onPageChange={setActivePage}
-      />
+      <Navbar activePage={navbarPage} onPageChange={handlePageChange} />
 
-      {/* Main Dynamic View with Suspense */}
       <main className="flex-1 flex flex-col">
         <Suspense fallback={<PageFallback />}>
           {activePage === 'swap' && <SwapPage />}
           {activePage === 'pools' && (
-            <PoolsPage onNavigateNewPosition={handleNavigateNewPosition} />
+            <PoolsPage
+              onNavigateNewPosition={handleNavigateNewPosition}
+              onNavigatePoolDetail={handleNavigatePoolDetail}
+            />
           )}
           {activePage === 'new_position' && (
             <NewPositionPage
@@ -81,17 +115,40 @@ const AppContent: React.FC = () => {
               initialToken1={newPositionParams.token1}
               initialCurve={newPositionParams.curveType}
               initialFeeTier={newPositionParams.feeTier}
+              initialPlugin={newPositionParams.plugin}
+              initialTickSpacing={newPositionParams.tickSpacing}
             />
           )}
           {activePage === 'positions' && (
-            <PositionsPage onNavigateNewPosition={() => handleNavigateNewPosition()} />
+            <PositionsPage
+              onNavigateNewPosition={() => handleNavigateNewPosition()}
+              onNavigateDetail={handleNavigatePositionDetail}
+            />
+          )}
+          {activePage === 'position_detail' && detailTokenId !== null && (
+            <PositionDetailPage
+              tokenId={detailTokenId}
+              onBack={() => {
+                setDetailTokenId(null);
+                setActivePage('positions');
+              }}
+            />
+          )}
+          {activePage === 'pool_detail' && detailPoolId !== null && (
+            <PoolDetailPage
+              poolId={detailPoolId}
+              onBack={() => {
+                setDetailPoolId(null);
+                setActivePage('pools');
+              }}
+              onAddLiquidity={handleNavigateNewPosition}
+            />
           )}
           {activePage === 'claims' && <VaultClaimsPage />}
           {activePage === 'explore' && <ExplorePage />}
         </Suspense>
       </main>
 
-      {/* Apple Minimalist Institutional Footer */}
       <footer className="w-full border-t border-black/[0.06] dark:border-white/[0.08] py-6 px-4 sm:px-6 bg-white/50 dark:bg-[#08090B]/50 backdrop-blur-sm mt-auto">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-500 dark:text-neutral-400">
           <div className="flex items-center gap-3">

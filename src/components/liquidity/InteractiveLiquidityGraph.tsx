@@ -17,6 +17,13 @@ interface InteractiveLiquidityGraphProps {
   token1Symbol: string;
   token0Amount: string;
   token1Amount: string;
+  /** CLAMM ticks that will be sent on-chain */
+  tickLower?: number;
+  tickUpper?: number;
+  /** BinAMM bin id that will be sent as tickLower */
+  selectedBinId?: number;
+  /** Whether spot price came from on-chain slot0 */
+  priceFromChain?: boolean;
   onSetMinPrice?: (p: number) => void;
   onSetMaxPrice?: (p: number) => void;
   onToggleFullRange?: (f: boolean) => void;
@@ -38,6 +45,10 @@ export const InteractiveLiquidityGraph: React.FC<InteractiveLiquidityGraphProps>
   token1Symbol,
   token0Amount,
   token1Amount,
+  tickLower,
+  tickUpper,
+  selectedBinId,
+  priceFromChain = false,
   onSetMinPrice,
   onSetMaxPrice,
   onToggleFullRange,
@@ -176,12 +187,26 @@ export const InteractiveLiquidityGraph: React.FC<InteractiveLiquidityGraphProps>
       <div className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-100/70 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/[0.06]">
         <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
           <Activity className="w-3.5 h-3.5 text-emerald-500" />
-          <span>Current Market Reference:</span>
+          <span>{priceFromChain ? 'On-chain slot0 price:' : 'Market reference price:'}</span>
         </div>
         <div className="font-mono text-xs font-bold text-neutral-900 dark:text-white">
           {formatUSD(currentPrice)} {token1Symbol} per {token0Symbol}
         </div>
       </div>
+
+      {curveType === CurveType.CLAMM && tickLower !== undefined && tickUpper !== undefined && (
+        <div className="flex items-center justify-between px-1 text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+          <span>tickLower: {tickLower}</span>
+          <span>tickUpper: {tickUpper}</span>
+        </div>
+      )}
+
+      {curveType === CurveType.BIN_AMM && selectedBinId !== undefined && (
+        <div className="flex items-center justify-between px-1 text-[11px] font-mono text-neutral-500 dark:text-neutral-400">
+          <span>Active bin id (tickLower): {selectedBinId}</span>
+          <span>step: {binStepBps} bps</span>
+        </div>
+      )}
 
       {/* Main Graph Area */}
       <div className="flex-1 min-h-[260px] flex flex-col justify-center">
@@ -368,7 +393,7 @@ export const InteractiveLiquidityGraph: React.FC<InteractiveLiquidityGraphProps>
               </div>
 
               <div className="text-[11px] text-neutral-500 text-center font-mono">
-                Zero-slippage invariant band ($A={ampFactor}$) maintains 1:1 parity within ±0.05%
+                Preview A={ampFactor} (on-chain initialize uses default A=100)
               </div>
             </div>
 
