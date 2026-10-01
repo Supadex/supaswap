@@ -66,6 +66,7 @@ export const ManageLiquidityModal: React.FC<ManageLiquidityModalProps> = ({
       symbol: "",
       name: "",
       decimals: 18,
+      priceUSD: 0,
     },
   );
   const balance1 = useTokenWalletBalance(
@@ -74,6 +75,7 @@ export const ManageLiquidityModal: React.FC<ManageLiquidityModalProps> = ({
       symbol: "",
       name: "",
       decimals: 18,
+      priceUSD: 0,
     },
   );
 
