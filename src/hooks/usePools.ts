@@ -62,6 +62,8 @@ export function usePools() {
         publicClient,
         poolManager: addresses.poolManager,
         knownTokens,
+        lvrShieldPlugin: addresses.lvrShieldPlugin,
+        antiJITPlugin: addresses.antiJITPlugin,
       });
       setPools(next);
     } catch (err) {
@@ -71,7 +73,14 @@ export function usePools() {
     } finally {
       setIsLoading(false);
     }
-  }, [publicClient, addresses.poolManager, knownTokens, isLoadingList]);
+  }, [
+    publicClient,
+    addresses.poolManager,
+    addresses.lvrShieldPlugin,
+    addresses.antiJITPlugin,
+    knownTokens,
+    isLoadingList,
+  ]);
 
   useLayoutEffect(() => {
     if (publicClient && addresses.poolManager) {

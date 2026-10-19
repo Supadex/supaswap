@@ -73,6 +73,8 @@ export interface PositionDetail {
   curveType: CurveType;
   feeTier: string;
   feeNumber: number;
+  /** PoolKey.plugin — required for slot0 / pool-id probes */
+  hooks: `0x${string}`;
   tickLower: number;
   tickUpper: number;
   tickSpacing?: number;

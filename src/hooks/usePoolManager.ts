@@ -50,9 +50,10 @@ export function usePoolManager() {
 
   const initializePool = async (poolKey: PoolKey, sqrtPriceX96: bigint) => {
     if (!userAddress) throw new Error('Wallet not connected');
+    if (!publicClient) throw new Error('Public client unavailable');
     if (sqrtPriceX96 === 0n) throw new Error('Invalid initial sqrtPriceX96');
 
-    return mutateAsync({
+    const hash = await mutateAsync({
       address: addresses.poolManager,
       abi: SupaPoolManagerABI,
       functionName: 'initialize',
@@ -71,6 +72,13 @@ export function usePoolManager() {
         '0x',
       ],
     });
+
+    // Await confirmation so mint cannot race PoolNotInitialized (LVR afterInitialize + oracle grow).
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: hash as Hex });
+    if (receipt.status !== 'success') {
+      throw new Error('Pool initialize reverted on-chain');
+    }
+    return hash;
   };
 
   return {

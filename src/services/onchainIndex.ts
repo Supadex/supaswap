@@ -201,8 +201,12 @@ export async function fetchOnchainPools(args: {
   publicClient: PublicClient;
   poolManager: Address;
   knownTokens: TokenMetadata[];
+  lvrShieldPlugin?: Address;
+  antiJITPlugin?: Address;
 }): Promise<PoolItem[]> {
-  const { publicClient, poolManager, knownTokens } = args;
+  const { publicClient, poolManager, knownTokens, lvrShieldPlugin, antiJITPlugin } = args;
+  const lvrLc = (lvrShieldPlugin || zeroAddress).toLowerCase();
+  const jitLc = (antiJITPlugin || zeroAddress).toLowerCase();
   if (!poolManager) return [];
 
   const [logs, swapLogs] = await Promise.all([
@@ -326,7 +330,13 @@ export async function fetchOnchainPools(args: {
       volume24hUSD,
       volTvl,
       apr,
-      lvrProtection: plugin !== zeroAddress ? 'Active' : '—',
+      lvrProtection: (() => {
+        const p = plugin.toLowerCase();
+        if (p === zeroAddress) return '—';
+        if (lvrLc !== zeroAddress && p === lvrLc) return 'LVR';
+        if (jitLc !== zeroAddress && p === jitLc) return 'Anti-JIT';
+        return 'Plugin';
+      })(),
       activeLiquidity,
     });
   }
@@ -735,6 +745,7 @@ export async function hydratePosition(args: {
       curveType,
       feeTier: `${(fee / 10000).toFixed(2)}%`,
       feeNumber: fee,
+      hooks: plugin,
       tickLower: pos.tickLower,
       tickUpper: pos.tickUpper,
       tickSpacing,

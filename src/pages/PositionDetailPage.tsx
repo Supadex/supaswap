@@ -19,9 +19,11 @@ import { ManageLiquidityModal } from '../components/liquidity/ManageLiquidityMod
 import { PositionNFTArt } from '../components/liquidity/PositionNFTArt';
 import { RecentTransactions } from '../components/activity/RecentTransactions';
 import { usePositions } from '../hooks/usePositions';
+import { useAntiJitResidency } from '../hooks/useAntiJitResidency';
 import { useToast } from '../components/ui/Toast';
 import { getAddressesForChain } from '../contracts/addresses';
 import { CurveType } from '../contracts/types';
+import { formatSwapError } from '../hooks/useSupaRouter';
 import {
   isClammFullRangeTicks,
   int24ToBinId,
@@ -170,28 +172,58 @@ export const PositionDetailPage: React.FC<PositionDetailPageProps> = ({ tokenId,
     }
   };
 
+  const antiJit = useAntiJitResidency(
+    position
+      ? {
+          hooks: position.hooks,
+          currency0: position.token0.address,
+          currency1: position.token1.address,
+          fee: position.feeNumber,
+          tickSpacing: position.tickSpacing ?? 60,
+          curveType: position.curveType,
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper,
+          tokenId: position.tokenId,
+        }
+      : {}
+  );
+
   const handleCollect = async () => {
     if (!position) return;
     try {
-      info(
-        'Collecting Fees',
-        `Collecting ${position.token0.symbol} & ${position.token1.symbol} fees for #${position.tokenId.toString()}...`
-      );
+      if (antiJit?.isAntiJit && antiJit.unvestedBps > 0) {
+        info(
+          'AntiJIT fee vesting',
+          `~${(antiJit.unvestedBps / 100).toFixed(0)}% of accrued fees may be redistributed (residency ${antiJit.blocksElapsed}/${antiJit.minResidencyBlocks} blocks). Proceeding to collect vested share.`
+        );
+      } else {
+        info(
+          'Collecting Fees',
+          `Collecting ${position.token0.symbol} & ${position.token1.symbol} fees for #${position.tokenId.toString()}...`
+        );
+      }
       const hash = await collectFees(position.tokenId);
       success('Fees Collected', `Tx ${hash.slice(0, 10)}…`);
     } catch (err: unknown) {
-      error('Collection Failed', err instanceof Error ? err.message : 'Transaction reverted');
+      error('Collection Failed', formatSwapError(err));
     }
   };
 
   const handleSyncFees = async () => {
     if (!position) return;
     try {
-      info('Syncing Fees', `Updating unclaimed fees for #${position.tokenId.toString()}...`);
+      if (antiJit?.isAntiJit && antiJit.unvestedBps > 0) {
+        info(
+          'AntiJIT fee vesting',
+          `Sync pokes fee accrual — unvested fees (~${(antiJit.unvestedBps / 100).toFixed(0)}%) can be confiscated and redistributed to remaining LPs.`
+        );
+      } else {
+        info('Syncing Fees', `Updating unclaimed fees for #${position.tokenId.toString()}...`);
+      }
       const hash = await syncFees(position.tokenId);
       success('Fees Synced', `Tx ${hash.slice(0, 10)}…`);
     } catch (err: unknown) {
-      error('Sync Failed', err instanceof Error ? err.message : 'Transaction reverted');
+      error('Sync Failed', formatSwapError(err));
     }
   };
 
@@ -486,6 +518,30 @@ export const PositionDetailPage: React.FC<PositionDetailPageProps> = ({ tokenId,
             </div>
 
             <div className="pt-1 border-t border-neutral-200/60 dark:border-white/[0.06] space-y-3">
+              {antiJit?.isAntiJit && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1.5">
+                  <div className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                    Anti-JIT fee vesting
+                  </div>
+                  <p className="text-[11px] text-amber-700/90 dark:text-amber-400/90 leading-relaxed">
+                    Fees vest linearly over {antiJit.minResidencyBlocks} blocks after deposit.
+                    Sync / Collect / early withdraw confiscate the unvested share (redistributed to
+                    remaining LPs). PoolKey.plugin is singular — this pool cannot also attach LVR.
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-amber-700 dark:text-amber-400">
+                    <span>
+                      Residency {antiJit.blocksElapsed}/{antiJit.minResidencyBlocks} blocks
+                    </span>
+                    <span>{antiJit.progressPct.toFixed(0)}% vested</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-amber-500/20 overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500/80 transition-all"
+                      style={{ width: `${Math.min(100, antiJit.progressPct)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-xs text-neutral-500">
                   <Coins className="w-3.5 h-3.5 text-amber-500" />

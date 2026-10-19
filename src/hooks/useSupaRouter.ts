@@ -36,6 +36,40 @@ export function formatSwapError(err: unknown): string {
   if (msg.includes('0xdc15460a') || /PoolNotInitialized/i.test(msg)) {
     return 'Pool is not initialized for this fee/plugin — open Add from the pool row, or create the pool first.';
   }
+  // PluginNotWhitelisted(address) — delisted or never-whitelisted hook
+  if (msg.includes('0x69daa0e3') || /PluginNotWhitelisted/i.test(msg)) {
+    return 'This pool’s plugin is not whitelisted (or was delisted). Swaps and liquidity ops are disabled until governance re-approves it.';
+  }
+  if (msg.includes('0x1f9990be') || /PluginWhitelistRequired/i.test(msg)) {
+    return 'Protocol plugin whitelist is not configured — contact the operator.';
+  }
+  // HookDeltaNotAllowed(address)
+  if (msg.includes('0x460c7399') || /HookDeltaNotAllowed/i.test(msg)) {
+    return 'This plugin is not allowed to adjust deltas/fees (missing canReturnDelta). Ask governance to grant the delta flag.';
+  }
+  // HookDeltaCapExceeded()
+  if (msg.includes('0x1e7098ec') || /HookDeltaCapExceeded/i.test(msg)) {
+    return 'Plugin returned an invalid fee/delta adjustment. The pool plugin may be misconfigured.';
+  }
+  // InvalidFee(uint24)
+  if (msg.includes('0x9ae5d65e') || /InvalidFee\b/i.test(msg)) {
+    return 'Swap fee is invalid (must be below 100%). Dynamic fee from the plugin may be out of bounds.';
+  }
+  // InvalidFeeBounds(uint24,uint24)
+  if (msg.includes('0xf6964659') || /InvalidFeeBounds/i.test(msg)) {
+    return 'Invalid fee bounds — min must be ≤ max and both must be below 100% (1e6 pips).';
+  }
+  // InvalidDecayHalfLife()
+  if (msg.includes('0x9ef0cd16') || /InvalidDecayHalfLife/i.test(msg)) {
+    return 'Decay half-life must be greater than zero.';
+  }
+  // PluginPermissionDenied(address,uint256)
+  if (msg.includes('0xdd89d6c7') || /PluginPermissionDenied/i.test(msg)) {
+    return 'Plugin denied this operation — missing permission flag or Operator role.';
+  }
+  if (/quoteExact|Quoter|Unexpected error/i.test(msg) && /revert/i.test(msg)) {
+    return 'Quote simulation reverted — pool may be uninitialized, plugin delisted, or amount too large.';
+  }
   if (/user rejected|User rejected|denied/i.test(msg)) {
     return 'Transaction rejected in wallet.';
   }

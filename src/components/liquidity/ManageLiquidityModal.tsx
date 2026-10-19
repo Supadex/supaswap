@@ -11,6 +11,7 @@ import { useToast } from "../ui/Toast";
 import { usePositions, type PositionDetail } from "../../hooks/usePositions";
 import { useTokenWalletBalance } from "../../hooks/useTokenWalletBalance";
 import { usePoolManager } from "../../hooks/usePoolManager";
+import { useAntiJitResidency } from "../../hooks/useAntiJitResidency";
 import { CurveType, type PoolKey } from "../../contracts/types";
 import { getLiquidityForAmounts } from "../../utils/poolMath";
 import { formatSwapError } from "../../hooks/useSupaRouter";
@@ -59,6 +60,21 @@ export const ManageLiquidityModal: React.FC<ManageLiquidityModalProps> = ({
   const { increaseLiquidity, decreaseLiquidity, isManaging } = usePositions();
   const { getPoolSqrtPrice } = usePoolManager();
   const { info, success, error, warning } = useToast();
+  const antiJit = useAntiJitResidency(
+    position
+      ? {
+          hooks: position.hooks,
+          currency0: position.token0.address,
+          currency1: position.token1.address,
+          fee: position.feeNumber,
+          tickSpacing: position.tickSpacing ?? 60,
+          curveType: position.curveType,
+          tickLower: position.tickLower,
+          tickUpper: position.tickUpper,
+          tokenId: position.tokenId,
+        }
+      : {},
+  );
 
   const balance0 = useTokenWalletBalance(
     position?.token0 ?? {
@@ -158,7 +174,8 @@ export const ManageLiquidityModal: React.FC<ManageLiquidityModalProps> = ({
           fee: position.feeNumber,
           tickSpacing: position.tickSpacing ?? 60,
           curveType: position.curveType,
-          hooks: zeroAddress,
+          // Must match NFT PoolKey.plugin — zeroAddress probes a different pool id.
+          hooks: (position.hooks || zeroAddress) as `0x${string}`,
         };
         const sqrt = await getPoolSqrtPrice(poolKey);
         liquidity = getLiquidityForAmounts(
@@ -196,6 +213,12 @@ export const ManageLiquidityModal: React.FC<ManageLiquidityModalProps> = ({
 
   const handleDecrease = async () => {
     try {
+      if (antiJit?.isAntiJit && antiJit.unvestedBps > 0) {
+        warning(
+          "AntiJIT early withdraw",
+          `~${(antiJit.unvestedBps / 100).toFixed(0)}% of accrued fees may be confiscated (residency ${antiJit.blocksElapsed}/${antiJit.minResidencyBlocks} blocks).`,
+        );
+      }
       info(
         "Removing Liquidity",
         `Withdrawing ${removePercent}% of liquidity from position #${position.tokenId.toString()}...`,
@@ -362,6 +385,13 @@ export const ManageLiquidityModal: React.FC<ManageLiquidityModalProps> = ({
 
         {mode === "decrease" && (
           <div className="space-y-4">
+            {antiJit?.isAntiJit && antiJit.unvestedBps > 0 && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                Anti-JIT vesting: ~{(antiJit.unvestedBps / 100).toFixed(0)}% of accrued fees may be
+                confiscated on withdraw/collect (residency {antiJit.blocksElapsed}/
+                {antiJit.minResidencyBlocks} blocks, {antiJit.progressPct.toFixed(0)}% vested).
+              </div>
+            )}
             <div className="p-4 bg-neutral-50 dark:bg-white/[0.02] border border-neutral-200/60 dark:border-white/[0.04] rounded-2xl text-center space-y-3">
               <div className="text-4xl font-extrabold font-mono text-neutral-900 dark:text-white">
                 {removePercent}%

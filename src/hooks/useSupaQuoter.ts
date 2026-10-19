@@ -14,6 +14,7 @@ import {
 } from '../utils/poolMath';
 import { findBestSwapRoute, buildPreferredPairMap } from '../utils/swapPath';
 import { usePools } from './usePools';
+import { formatSwapError } from './useSupaRouter';
 
 export interface UseSupaQuoterParams {
   tokenIn: Address;
@@ -200,7 +201,7 @@ export function useSupaQuoter({
         });
       } catch (err: unknown) {
         if (!isMounted) return;
-        setError(err instanceof Error ? err.message : 'Failed to fetch quote');
+        setError(formatSwapError(err));
         setQuote(null);
         setIsPoolInitialized(false);
         setPoolKey(null);

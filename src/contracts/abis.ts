@@ -77,3 +77,13 @@ export const ERC20ABI = parseAbi([
   'function approve(address spender, uint256 amount) external returns (bool)',
   'function transferFrom(address sender, address recipient, uint256 amount) external returns (bool)',
 ] as const);
+
+export const PluginWhitelistABI = parseAbi([
+  'function isPluginWhitelisted(address plugin) external view returns (bool)',
+  'function canPluginReturnDelta(address plugin) external view returns (bool)',
+] as const);
+
+export const AntiJITVestingPluginABI = parseAbi([
+  'function minResidencyBlocks() external view returns (uint32)',
+  'function residencies(bytes32 poolId, bytes32 positionKey) external view returns (uint32 lastDepositBlock, uint32 lastDepositTimestamp, uint128 liquidity)',
+] as const);

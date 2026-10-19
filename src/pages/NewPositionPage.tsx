@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { zeroAddress, type Address } from 'viem';
 import { Button } from '../components/ui/Button';
@@ -19,6 +19,7 @@ import { formatSwapError } from '../hooks/useSupaRouter';
 import { CurveType, type PoolKey, type TokenMetadata } from '../contracts/types';
 import { sortTokens } from '../contracts/utils';
 import { getAddressesForChain } from '../contracts/addresses';
+import { PluginWhitelistABI } from '../contracts/abis';
 import {
   buildMintLiquidityParams,
   CENTER_BIN_ID,
@@ -100,6 +101,7 @@ export const NewPositionPage: React.FC<NewPositionPageProps> = ({
   const { isPoolInitialized, getPoolSqrtPrice, initializePool, isInitializing } = usePoolManager();
   const { pools, refreshPools } = usePools();
   const { tokens } = useTokenList();
+  const publicClient = usePublicClient();
   const protocolAddrs = getAddressesForChain(chainId);
 
   const [defaults] = useState(() => pickDefaultPair(tokens));
@@ -194,27 +196,72 @@ export const NewPositionPage: React.FC<NewPositionPageProps> = ({
   }, [selectedFee, selectedCurve, initialTickSpacing, initialFeeTier, initialCurve]);
 
   /**
-   * PoolKey.plugin is part of the pool id. Must match the on-chain pool
-   * (e.g. LVR Shield) — zeroAddress targets a different pool.
+   * PoolKey.plugin is part of the pool id.
+   * Prefer an explicit initialPlugin (e.g. pool-detail "Add"), else an indexed match
+   * (including zeroAddress vanilla), else vanilla — never silently force LVR.
    */
+  const [pluginChoice, setPluginChoice] = useState<'vanilla' | 'lvr' | 'antijit' | 'custom'>(
+    () => {
+      if (initialPlugin && initialPlugin !== zeroAddress) {
+        if (
+          protocolAddrs.lvrShieldPlugin &&
+          initialPlugin.toLowerCase() === protocolAddrs.lvrShieldPlugin.toLowerCase()
+        ) {
+          return 'lvr';
+        }
+        if (
+          protocolAddrs.antiJITPlugin &&
+          initialPlugin.toLowerCase() === protocolAddrs.antiJITPlugin.toLowerCase()
+        ) {
+          return 'antijit';
+        }
+        return 'custom';
+      }
+      return 'vanilla';
+    }
+  );
+
   const resolvedPlugin = useMemo((): Address => {
     const a0 = token0.address.toLowerCase();
     const a1 = token1.address.toLowerCase();
-    const match = pools.find((p) => {
+
+    // Explicit navigation from an existing pool row always wins.
+    if (initialPlugin !== undefined && initialPlugin !== null) {
+      return (initialPlugin || zeroAddress) as Address;
+    }
+
+    const matches = pools.filter((p) => {
       if (p.curveType !== selectedCurve || p.feeNumber !== selectedFee) return false;
       const p0 = p.token0.address.toLowerCase();
       const p1 = p.token1.address.toLowerCase();
       return (p0 === a0 && p1 === a1) || (p0 === a1 && p1 === a0);
     });
-    if (match?.plugin && match.plugin !== zeroAddress) {
-      return match.plugin as Address;
+
+    if (matches.length === 1) {
+      return ((matches[0].plugin as Address) || zeroAddress) as Address;
     }
-    if (initialPlugin && initialPlugin !== zeroAddress) {
-      return initialPlugin;
+    if (matches.length > 1) {
+      // Prefer the user's picker selection among duplicates.
+      const want =
+        pluginChoice === 'lvr'
+          ? protocolAddrs.lvrShieldPlugin
+          : pluginChoice === 'antijit'
+            ? protocolAddrs.antiJITPlugin
+            : zeroAddress;
+      const hit = matches.find(
+        (p) => (p.plugin || zeroAddress).toLowerCase() === (want || zeroAddress).toLowerCase()
+      );
+      if (hit) return ((hit.plugin as Address) || zeroAddress) as Address;
+      return ((matches[0].plugin as Address) || zeroAddress) as Address;
     }
-    if (match?.plugin) return match.plugin as Address;
-    const lvr = protocolAddrs.lvrShieldPlugin;
-    if (lvr && lvr !== zeroAddress) return lvr;
+
+    // New pool: honor explicit plugin picker (default vanilla).
+    if (pluginChoice === 'lvr' && protocolAddrs.lvrShieldPlugin) {
+      return protocolAddrs.lvrShieldPlugin;
+    }
+    if (pluginChoice === 'antijit' && protocolAddrs.antiJITPlugin) {
+      return protocolAddrs.antiJITPlugin;
+    }
     return zeroAddress;
   }, [
     pools,
@@ -223,7 +270,9 @@ export const NewPositionPage: React.FC<NewPositionPageProps> = ({
     selectedCurve,
     selectedFee,
     initialPlugin,
+    pluginChoice,
     protocolAddrs.lvrShieldPlugin,
+    protocolAddrs.antiJITPlugin,
   ]);
 
   const mintPreview = useMemo(
@@ -511,6 +560,43 @@ export const NewPositionPage: React.FC<NewPositionPageProps> = ({
       let sqrtPrice = exists ? await getPoolSqrtPrice(poolKey) : 0n;
 
       if (!exists) {
+        // Whitelist preflight before initialize — avoids PluginNotWhitelisted mid-flow.
+        const plugin = resolvedPlugin;
+        if (
+          plugin &&
+          plugin !== zeroAddress &&
+          protocolAddrs.pluginWhitelist &&
+          publicClient
+        ) {
+          const listed = (await publicClient.readContract({
+            address: protocolAddrs.pluginWhitelist,
+            abi: PluginWhitelistABI,
+            functionName: 'isPluginWhitelisted',
+            args: [plugin],
+          })) as boolean;
+          if (!listed) {
+            throw new Error(
+              'This plugin is not whitelisted. Ask governance to approve it before creating the pool.'
+            );
+          }
+          if (
+            protocolAddrs.antiJITPlugin &&
+            plugin.toLowerCase() === protocolAddrs.antiJITPlugin.toLowerCase()
+          ) {
+            const canDelta = (await publicClient.readContract({
+              address: protocolAddrs.pluginWhitelist,
+              abi: PluginWhitelistABI,
+              functionName: 'canPluginReturnDelta',
+              args: [plugin],
+            })) as boolean;
+            if (!canDelta) {
+              throw new Error(
+                'AntiJIT requires canReturnDelta on the whitelist. Ask governance to grant the delta flag.'
+              );
+            }
+          }
+        }
+
         setStep('initializing');
         // Always initialize with PoolKey-ordered price (currency0/currency1), never UI order
         const initSqrt =
@@ -903,6 +989,60 @@ export const NewPositionPage: React.FC<NewPositionPageProps> = ({
                 );
               })}
             </div>
+
+            {/* Plugin is part of PoolKey — only when not pinned from an existing pool row */}
+            {initialPlugin === undefined && (
+              <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-white/[0.06]">
+                <div className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">
+                  Pool plugin
+                </div>
+                <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                  One plugin per pool. LVR and Anti-JIT cannot be combined.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {(
+                    [
+                      { id: 'vanilla' as const, label: 'None', desc: 'Static fee' },
+                      {
+                        id: 'lvr' as const,
+                        label: 'LVR Shield',
+                        desc: 'Dynamic fee',
+                        disabled: !protocolAddrs.lvrShieldPlugin,
+                      },
+                      {
+                        id: 'antijit' as const,
+                        label: 'Anti-JIT',
+                        desc: 'Fee vesting',
+                        disabled: !protocolAddrs.antiJITPlugin,
+                      },
+                    ] as const
+                  ).map((opt) => {
+                    const isSelected = pluginChoice === opt.id;
+                    const disabled = 'disabled' in opt && opt.disabled;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => !disabled && setPluginChoice(opt.id)}
+                        className={`p-3 rounded-2xl border text-left transition-all ${
+                          disabled
+                            ? 'opacity-40 cursor-not-allowed'
+                            : 'cursor-pointer'
+                        } ${
+                          isSelected
+                            ? 'bg-neutral-900 text-white dark:bg-white dark:text-black border-neutral-900 dark:border-white'
+                            : 'bg-neutral-50 dark:bg-white/[0.03] border-neutral-200 dark:border-white/[0.06]'
+                        }`}
+                      >
+                        <div className="text-xs font-bold">{opt.label}</div>
+                        <div className="text-[10px] opacity-75 mt-0.5">{opt.desc}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* STEP 4 — Starting price (Uniswap-style) when creating a new pool */}
