@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import { useConnection } from 'wagmi';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { usePositions, type PositionDetail } from '../../hooks/usePositions';
 import { useToast } from '../ui/Toast';
+import { getAddressesForChain } from '../../contracts/addresses';
+import { formatSwapError } from '../../hooks/useSupaRouter';
 import {
   RotateCcw,
   RefreshCw,
@@ -29,14 +32,26 @@ export const PositionDetailModal: React.FC<PositionDetailModalProps> = ({
   position,
   onManageLiquidity,
 }) => {
+  const { chainId } = useConnection();
   const { collectFees, burnPosition, isManaging } = usePositions();
-  const { info, success, error } = useToast();
+  const { info, success, error, warning } = useToast();
   const [isCompounding, setIsCompounding] = useState(false);
+  const antiJitPlugin = getAddressesForChain(chainId)?.antiJITPlugin;
+  const isAntiJit =
+    !!position?.hooks &&
+    !!antiJitPlugin &&
+    position.hooks.toLowerCase() === antiJitPlugin.toLowerCase();
 
   if (!position) return null;
 
   const handleCollect = async () => {
     try {
+      if (isAntiJit) {
+        warning(
+          'AntiJIT fee vesting',
+          'Collect may confiscate unvested fees and redistribute them to remaining LPs.'
+        );
+      }
       info(
         'Collecting Fees',
         `Submitting transaction to collect accumulated ${position.token0.symbol} & ${position.token1.symbol} fees...`
@@ -47,10 +62,7 @@ export const PositionDetailModal: React.FC<PositionDetailModalProps> = ({
         `Successfully collected ${position.uncollectedFeesUSD} in fees (Tx: ${hash.slice(0, 10)}...)`
       );
     } catch (err: unknown) {
-      error(
-        'Collection Failed',
-        err instanceof Error ? err.message : 'Transaction reverted'
-      );
+      error('Collection Failed', formatSwapError(err));
     }
   };
 

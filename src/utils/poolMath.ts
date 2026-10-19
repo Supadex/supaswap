@@ -5,6 +5,9 @@ import { getFeeTierDefaultTickSpacing } from '../contracts/utils';
 const Q96 = 2n ** 96n;
 const MIN_TICK = -887272;
 const MAX_TICK = 887272;
+/** Matches TickMathLib.MIN_SQRT_RATIO / MAX_SQRT_RATIO (Uniswap V3 bounds). */
+export const MIN_SQRT_RATIO = 4295128739n;
+export const MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342n;
 /** Uniswap V3 full-range ticks aligned to spacing 60 (common default). */
 export const FULL_RANGE_TICK_LOWER = -887220;
 export const FULL_RANGE_TICK_UPPER = 887220;
@@ -116,7 +119,11 @@ export function priceToSqrtPriceX96(
   const adjustedPrice = price * decimalAdjustment;
   const sqrtPrice = Math.sqrt(adjustedPrice);
   const sqrtPriceScaled = BigInt(Math.floor(sqrtPrice * 1e12));
-  return (sqrtPriceScaled * Q96) / BigInt(1e12);
+  let sqrtPriceX96 = (sqrtPriceScaled * Q96) / BigInt(1e12);
+  // Clamp so StableAMM / TickMath post-swap checks do not revert on extreme seeds.
+  if (sqrtPriceX96 <= MIN_SQRT_RATIO) sqrtPriceX96 = MIN_SQRT_RATIO + 1n;
+  if (sqrtPriceX96 >= MAX_SQRT_RATIO) sqrtPriceX96 = MAX_SQRT_RATIO - 1n;
+  return sqrtPriceX96;
 }
 
 /** Q64.96 sqrtPriceX96 → human price (token1 per token0). */

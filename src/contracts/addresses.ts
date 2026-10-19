@@ -12,70 +12,127 @@ export interface ProtocolAddresses {
   permit2: Address;
   /** Optional LVR shield plugin — used when creating / minting into shielded pools */
   lvrShieldPlugin?: Address;
+  /** Optional Anti-JIT fee-vesting plugin */
+  antiJITPlugin?: Address;
+  /** Optional plugin whitelist (preflight / residency UX) */
+  pluginWhitelist?: Address;
 }
 
+const ZERO = '0x0000000000000000000000000000000000000000' as Address;
+const ANVIL_CHAIN_ID = 31337;
+
 // Registry mapped by Chain ID
+const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as Address;
+
+/** Monad Testnet — DeploySupaDex broadcast 2026-10-18 */
+const MONAD_TESTNET: ProtocolAddresses = {
+  vault: '0x2d9BcA3f7Fa23863944Fd611f4970Da6fB97Fe2D',
+  poolManager: '0xC6B8Dc0AA5408C1e5C836794dD61F70Bd51A3A90',
+  router: '0x677654F5eD18bD863dcfabFA69894A030010c1bc',
+  quoter: '0xD44B281767F32E1fb72257223366E87378a7019d',
+  positionManager: '0x6fe90e8111e0A18e6A8119dB82909E50B8A8400F',
+  claimsRouter: '0xc2F4605fdDC67F4a48e83dBfC945FEdeA42879a0',
+  permit2: PERMIT2,
+  lvrShieldPlugin: '0x16c9d6e825CE8EAd431eB1E1443e18FcDbCE2623',
+  antiJITPlugin: '0x60317687C9cBb3d31a75acc2bfBcD119b411ca52',
+  pluginWhitelist: '0x78c98fBB518551c7f31D932878901027F0B9cD29',
+};
+
+/** Sepolia — DeploySupaDex broadcast 2026-10-19 (EIP-3860-safe engines) */
+const SEPOLIA: ProtocolAddresses = {
+  vault: '0x5A7FaCaBAFBB70f2ABCF423A574B2A9D8014097e',
+  poolManager: '0xD44B281767F32E1fb72257223366E87378a7019d',
+  router: '0x43DC1d6fE415524dbA0a359cdaFAf7d864EECC5f',
+  quoter: '0x8CBEE7D91A24Fc74659856a55CF85c3F3622285b',
+  positionManager: '0xFc0bbF69664b6511Cc961F64C0948D82Bd45b707',
+  claimsRouter: '0x543132b740C85F59AC3344CAEa8e81fb1514856d',
+  permit2: PERMIT2,
+  lvrShieldPlugin: '0x484Ec3DC5fb027C2829ced71d3f7FBCb0A40049b',
+  antiJITPlugin: '0x982f42ad054152CC5bF9390c39eeB0DFad0E847c',
+  pluginWhitelist: '0xA82f100207d0BE0F162b3f3b5E3048cA7ED5C88a',
+};
+
+/** Base Sepolia — DeploySupaDex broadcast 2026-10-19 */
+const BASE_SEPOLIA: ProtocolAddresses = {
+  vault: '0x60317687C9cBb3d31a75acc2bfBcD119b411ca52',
+  poolManager: '0x6fe90e8111e0A18e6A8119dB82909E50B8A8400F',
+  router: '0xb66EE27Da7E975374D7252457f0bdACE729C5096',
+  quoter: '0xFc0bbF69664b6511Cc961F64C0948D82Bd45b707',
+  positionManager: '0xD528B7cdb95dd607D381e0e554cB60fC54DE9f4a',
+  claimsRouter: '0x43DC1d6fE415524dbA0a359cdaFAf7d864EECC5f',
+  permit2: PERMIT2,
+  lvrShieldPlugin: '0xD44B281767F32E1fb72257223366E87378a7019d',
+  antiJITPlugin: '0x484Ec3DC5fb027C2829ced71d3f7FBCb0A40049b',
+  pluginWhitelist: '0x59fcd5F6BE8C552daDA47F0af0ae008CE99f45C4',
+};
+
 export const CONTRACT_ADDRESSES: Record<number, ProtocolAddresses> = {
-  // Sepolia Testnet (Default deployment)
-  11155111: {
-    vault: '0x1000000000000000000000000000000000000001',
-    poolManager: '0x2000000000000000000000000000000000000002',
-    router: '0x3000000000000000000000000000000000000003',
-    quoter: '0x4000000000000000000000000000000000000004',
-    positionManager: '0x5000000000000000000000000000000000000005',
-    claimsRouter: '0x6000000000000000000000000000000000000006',
-    permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
-  },
-  // Ethereum Mainnet
+  11155111: SEPOLIA,
+  84532: BASE_SEPOLIA,
+  // Monad Testnet (10143)
+  10143: MONAD_TESTNET,
+  // Ethereum Mainnet (placeholders until mainnet launch)
   1: {
-    vault: '0x1000000000000000000000000000000000000001',
-    poolManager: '0x2000000000000000000000000000000000000002',
-    router: '0x3000000000000000000000000000000000000003',
-    quoter: '0x4000000000000000000000000000000000000004',
-    positionManager: '0x5000000000000000000000000000000000000005',
-    claimsRouter: '0x6000000000000000000000000000000000000006',
-    permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    vault: ZERO,
+    poolManager: ZERO,
+    router: ZERO,
+    quoter: ZERO,
+    positionManager: ZERO,
+    claimsRouter: ZERO,
+    permit2: PERMIT2,
   },
-  // Base
+  // Base mainnet
   8453: {
-    vault: '0x1000000000000000000000000000000000000001',
-    poolManager: '0x2000000000000000000000000000000000000002',
-    router: '0x3000000000000000000000000000000000000003',
-    quoter: '0x4000000000000000000000000000000000000004',
-    positionManager: '0x5000000000000000000000000000000000000005',
-    claimsRouter: '0x6000000000000000000000000000000000000006',
-    permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    vault: ZERO,
+    poolManager: ZERO,
+    router: ZERO,
+    quoter: ZERO,
+    positionManager: ZERO,
+    claimsRouter: ZERO,
+    permit2: PERMIT2,
   },
   // Arbitrum One
   42161: {
-    vault: '0x1000000000000000000000000000000000000001',
-    poolManager: '0x2000000000000000000000000000000000000002',
-    router: '0x3000000000000000000000000000000000000003',
-    quoter: '0x4000000000000000000000000000000000000004',
-    positionManager: '0x5000000000000000000000000000000000000005',
-    claimsRouter: '0x6000000000000000000000000000000000000006',
-    permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
+    vault: ZERO,
+    poolManager: ZERO,
+    router: ZERO,
+    quoter: ZERO,
+    positionManager: ZERO,
+    claimsRouter: ZERO,
+    permit2: PERMIT2,
   },
   // Localhost Anvil (Chain ID 31337)
   31337: {
     vault: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
-    poolManager: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
-    router: '0xc6e7DF5E7b4f2A278906862b61205850344D4e7d',
-    quoter: '0x59b670e9fA9D0A427751Af201D676719a970857b',
-    positionManager: '0x3Aa5ebB10DC797CAC828524e59A333d0A371443c',
-    claimsRouter: '0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1',
-    permit2: '0x000000000022D473030F116dDEE9F6B43aC78BA3',
-    lvrShieldPlugin: '0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82',
+    poolManager: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
+    router: '0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1',
+    quoter: '0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE',
+    positionManager: '0x0B306BF915C4d645ff596e518fAf3F9669b97016',
+    claimsRouter: '0x68B1D87F95878fE05B998F19b66F4baba5De1aed',
+    permit2: PERMIT2,
+    lvrShieldPlugin: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
+    antiJITPlugin: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
+    pluginWhitelist: '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e',
   },
 };
+
+/** True when registry still has placeholder deploy stubs (non-Anvil). */
+export function isPlaceholderDeploy(addrs: ProtocolAddresses): boolean {
+  return (
+    addrs.poolManager.toLowerCase().startsWith('0x200000000000000000000000000000000000') ||
+    addrs.vault === ZERO
+  );
+}
 
 export const getAddressesForChain = (chainId?: number): ProtocolAddresses => {
   const base =
     chainId && CONTRACT_ADDRESSES[chainId]
       ? CONTRACT_ADDRESSES[chainId]
-      : CONTRACT_ADDRESSES[11155111];
+      : CONTRACT_ADDRESSES[10143];
 
   const env = (key: string): Address | undefined => {
+    // VITE_* overrides apply only on Anvil — never leak local addresses onto prod nets.
+    if (chainId !== ANVIL_CHAIN_ID) return undefined;
     const v = (import.meta.env as Record<string, string | undefined>)[key];
     if (v && /^0x[a-fA-F0-9]{40}$/.test(v)) return v as Address;
     return undefined;
@@ -91,6 +148,8 @@ export const getAddressesForChain = (chainId?: number): ProtocolAddresses => {
     permit2: base.permit2,
     lvrShieldPlugin:
       env('VITE_LVR_SHIELD_PLUGIN_ADDRESS') ?? base.lvrShieldPlugin,
+    antiJITPlugin: env('VITE_ANTI_JIT_PLUGIN_ADDRESS') ?? base.antiJITPlugin,
+    pluginWhitelist: env('VITE_PLUGIN_WHITELIST_ADDRESS') ?? base.pluginWhitelist,
   };
 };
 
@@ -119,6 +178,44 @@ export const CHAIN_TOKENS: Record<number, TokenMetadata[]> = {
       address: '0x7169D38820dfd117C3FA1f22a697dBA58d90BA06',
       symbol: 'USDT',
       name: 'Tether USD (Sepolia)',
+      decimals: 6,
+      priceUSD: 1.0,
+    },
+  ],
+
+  // Base Sepolia (84532)
+  84532: [
+    {
+      address: '0x0000000000000000000000000000000000000000',
+      symbol: 'ETH',
+      name: 'Base Sepolia Ether',
+      decimals: 18,
+      priceUSD: 0,
+      isNative: true,
+    },
+    {
+      address: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
+      symbol: 'USDC',
+      name: 'USD Coin (Base Sepolia)',
+      decimals: 6,
+      priceUSD: 1.0,
+    },
+  ],
+
+  // Monad Testnet (10143)
+  10143: [
+    {
+      address: '0x0000000000000000000000000000000000000000',
+      symbol: 'MON',
+      name: 'Monad Testnet',
+      decimals: 18,
+      priceUSD: 0,
+      isNative: true,
+    },
+    {
+      address: '0x534b2f3A21130d7a60830c2Df862319e593943A3',
+      symbol: 'USDC',
+      name: 'USD Coin (Monad Testnet)',
       decimals: 6,
       priceUSD: 1.0,
     },
@@ -287,8 +384,8 @@ export const CHAIN_TOKENS: Record<number, TokenMetadata[]> = {
 
 export const getTokensForChain = (chainId?: number): TokenMetadata[] => {
   const list =
-    chainId && CHAIN_TOKENS[chainId] ? CHAIN_TOKENS[chainId] : CHAIN_TOKENS[11155111];
+    chainId && CHAIN_TOKENS[chainId] ? CHAIN_TOKENS[chainId] : CHAIN_TOKENS[10143];
   return list.map(enrichTokenLogo);
 };
 
-export const DEFAULT_TOKENS: TokenMetadata[] = CHAIN_TOKENS[11155111];
+export const DEFAULT_TOKENS: TokenMetadata[] = CHAIN_TOKENS[10143];
